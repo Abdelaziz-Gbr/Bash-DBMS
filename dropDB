@@ -14,7 +14,7 @@ fi
 
 rm -rf ./mydb/$1
 
-echo database $1 removed successfuly
+echo "Database $1 removed successfully."
 
 exit 0
 
