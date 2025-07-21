@@ -88,12 +88,12 @@ for (( i=1; i<=col_count; i++ )); do
 
     # Build metadata line
     if (( i == 1 )); then
-        metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "int" "primary")
+        metadata_content+=$(printf "%s:%s:%s" "$col_name" "int" "primary")
     else
         PS3="Enter the data type for column $i (1=int, 2=str, 3=bool): "
         select col_type in int str bool; do
             if [[ -n "$col_type" ]]; then
-                metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "$col_type" "normal")
+                metadata_content+=$(printf "%s:%s:%s" "$col_name" "$col_type" "normal")
                 break
             else
                 echo "Invalid choice. Please select 1, 2, or 3."
