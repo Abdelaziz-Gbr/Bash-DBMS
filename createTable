@@ -18,7 +18,7 @@
 	    
 	    # Validate format: 4-12 letters only
 	    if [[ ! "$fileName" =~ ^[A-Za-z]{4,12}$ ]]; then
-		echo "Invalid name; use 4–12 letters (A–Z or a–z) only."
+		echo "Invalid name; use 4–12 letters (A–Z or a–z) only and no spaces."
 		read -n1 -r -p "Press any key to retry..."
 		continue
 	    fi
@@ -39,63 +39,79 @@
 	######## Column Metadata Collection & File Creation
 
 	# Ask for number of columns
-	read -p "Enter number of columns: " col_count
+read -p "Enter number of columns: " col_count
 
-	# Validate it's a number
-	if ! [[ "$col_count" =~ ^[1-9][0-9]*$ ]]; then
-	    echo "Invalid number of columns"
-	    exit 1
-	fi
+# Validate it's a number
+if ! [[ "$col_count" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Invalid number of columns"
+    exit 1
+fi
 
-	# Collect all metadata in-memory
-	metadata_content=""
-	for (( i=1; i<=col_count; i++ )); do
-	    # Column name input with validation: only A-Z or a-z, length 4-12
-	    while true; do
-		if (( i == 1 )); then
-		    echo "===================================="
-		    echo "Column 1 is the Primary Key and must be of type int"
-		fi
-		read -p "Enter column $i name (2-12 letters): " col_name
-		# enforce letters only and length
-		if [[ "$col_name" =~ ^[A-Za-z]{2,12}$ ]]; then
-		    break
-		else
-		    echo "Invalid column name. Use 2–12 letters (A–Z or a–z) only, no spaces or numbers."
-		fi
-	    done
+# Prepare to collect names and metadata
+metadata_content=""
+col_names=()
 
-	    # Append metadata line
-	    if (( i == 1 )); then
-		metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "int" "primary")
-		metadata_content+=$'\n'
-	    else
-	       
-	    # Type selection with clear prompt
-	    PS3="Enter the data type for column $i (1=int, 2=str, 3=bool): "
+for (( i=1; i<=col_count; i++ )); do
+    # Column name input with validation & uniqueness
+    while true; do
+        if (( i == 1 )); then
+            echo "===================================="
+            echo "Column 1 is the Primary Key and must be of type int"
+        fi
+        read -p "Enter column $i name (2–12 letters): " col_name
 
-		select col_type in int str bool; do
-		    if [[ -n "$col_type" ]]; then
-		        metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "$col_type" "normal")
-		        metadata_content+=$'\n'
-		        break
-		    else
-		        echo "Invalid choice. Please select 1, 2, or 3."
-		    fi
-		done
-	    fi
-	done
+        # 1) Format check: letters only, 2–12 chars
+        if [[ ! "$col_name" =~ ^[A-Za-z]{2,12}$ ]]; then
+            echo "Invalid column name. Use 2–12 letters only, no spaces or numbers."
+            continue
+        fi
+
+        # 2) Uniqueness check
+	    duplicate=false
+        for existing in "${col_names[@]}"; do
+            if [[ "$existing" == "$col_name" ]]; then
+                duplicate=true
+                break
+            fi
+        done
+        if $duplicate; then
+            echo "Column name '$col_name' is already used. Please choose a different name."
+            continue
+        fi
 
 
-	# Only after successful input, create files
-	table_path="mydb/$dbName/$fileName"
-	meta_path="mydb/$dbName/.${fileName}.metadata"
 
-	touch "$table_path"
-	printf "%s" "$metadata_content" > "$meta_path"
+        # Passed both → record it
+        col_names+=("$col_name")
+        break
+    done
 
-	echo -e "\n Table '$fileName' is created successfully. "
+    # Build metadata line
+    if (( i == 1 )); then
+        metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "int" "primary")
+    else
+        PS3="Enter the data type for column $i (1=int, 2=str, 3=bool): "
+        select col_type in int str bool; do
+            if [[ -n "$col_type" ]]; then
+                metadata_content+=$(printf "%s:%s:%s:%s" "$i" "$col_name" "$col_type" "normal")
+                break
+            else
+                echo "Invalid choice. Please select 1, 2, or 3."
+            fi
+        done
+    fi
+    metadata_content+=$'\n'
+done
 
-	exit 0
+# Only after successful input, create files
+table_path="mydb/$dbName/$fileName"
+meta_path="mydb/$dbName/.${fileName}.metadata"
+
+touch "$table_path"
+printf "%s" "$metadata_content" > "$meta_path"
+
+echo -e "\nTable '$fileName' is created successfully."
+
+exit 0
 
 
